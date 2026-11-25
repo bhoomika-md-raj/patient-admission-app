@@ -65,7 +65,7 @@ class DeletedPatient(Base):
         d = {f: getattr(self, f) for f in FIELDS}
         d["id"] = self.id
         d["admission_date"] = self.admission_date.isoformat()
-        d["deleted_at"] = self.deleted_at.isoformat()
+        d["deleted_at"] = self.deleted_at.strftime("%d %b %Y, %I:%M %p")
         return d
 
 
