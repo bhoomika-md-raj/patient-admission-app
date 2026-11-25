@@ -3,9 +3,10 @@
 Web app for hospital staff to manage admitted patients — add, list, filter, search, edit, delete (with confirmation) and discharge.
 
 **Live app:** https://patient-admission-app-nu.vercel.app/
+
 **API:** https://patient-admission-app-g26v.onrender.com/api/patients (docs at `/docs`)
 
-<small> Deleted:  https://patient-admission-app-g26v.onrender.com/api/patients?deleted=true </small>
+Deleted:  https://patient-admission-app-g26v.onrender.com/api/patients?deleted=true
 
 **Source code:** https://github.com/bhoomika-md-raj/patient-admission-app/tree/main
 
