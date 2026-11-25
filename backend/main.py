@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, field_validator
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, create_engine, false
+from sqlalchemy import Column, Date, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 # ---------- Database ----------
@@ -33,17 +33,40 @@ class Patient(Base):
     doctor = Column(String(80), nullable=False, index=True)
     admission_date = Column(Date, nullable=False)
     status = Column(String(20), nullable=False, default="Admitted")
-    is_deleted = Column(Boolean, nullable=False, default=False, server_default=false(), index=True)
-    deleted_at = Column(DateTime, nullable=True)
 
     def to_dict(self):
         return {
             "id": self.id, "name": self.name, "age": self.age, "gender": self.gender,
             "ward": self.ward, "department": self.department, "doctor": self.doctor,
             "admission_date": self.admission_date.isoformat(), "status": self.status,
-            "is_deleted": bool(self.is_deleted),
-            "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
         }
+
+
+# Columns shared by both tables
+FIELDS = ["name", "age", "gender", "ward", "department", "doctor", "admission_date", "status"]
+
+
+class DeletedPatient(Base):
+    """Archive of deleted patients. Keeps the original patient id, so ids are never reused.
+    The `patients` table holds active patients only."""
+    __tablename__ = "deleted_patients"
+    id = Column(Integer, primary_key=True, autoincrement=False)  # original patient id
+    name = Column(String(100), nullable=False, index=True)
+    age = Column(Integer, nullable=False)
+    gender = Column(String(20), nullable=False)
+    ward = Column(String(50), nullable=False, index=True)
+    department = Column(String(50), nullable=False, index=True)
+    doctor = Column(String(80), nullable=False, index=True)
+    admission_date = Column(Date, nullable=False)
+    status = Column(String(20), nullable=False)
+    deleted_at = Column(DateTime, nullable=False)
+
+    def to_dict(self):
+        d = {f: getattr(self, f) for f in FIELDS}
+        d["id"] = self.id
+        d["admission_date"] = self.admission_date.isoformat()
+        d["deleted_at"] = self.deleted_at.isoformat()
+        return d
 
 
 Base.metadata.create_all(bind=engine)
@@ -181,9 +204,9 @@ async def http_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail, "errors": {}})
 
 
-def get_or_404(db: Session, patient_id: int, include_deleted: bool = False) -> Patient:
+def get_or_404(db: Session, patient_id: int) -> Patient:
     p = db.get(Patient, patient_id)
-    if not p or (p.is_deleted and not include_deleted):
+    if not p:
         raise HTTPException(404, "Patient not found")
     return p
 
@@ -204,22 +227,23 @@ def list_patients(
     department: Optional[str] = None, doctor: Optional[str] = None,
     status: Optional[str] = None, deleted: bool = False, db: Session = Depends(get_db),
 ):
-    # deleted=false (default) -> active patients, deleted=true -> the "Deleted" list
-    q = db.query(Patient).filter(Patient.is_deleted == deleted)
+    # deleted=false (default) -> `patients` table, deleted=true -> `deleted_patients` table
+    M = DeletedPatient if deleted else Patient
+    q = db.query(M)
     if search and search.strip():
-        q = q.filter(Patient.name.ilike(f"%{search.strip()}%"))
+        q = q.filter(M.name.ilike(f"%{search.strip()}%"))
     if ward:
-        q = q.filter(Patient.ward == ward)
+        q = q.filter(M.ward == ward)
     if department:
-        q = q.filter(Patient.department == department)
+        q = q.filter(M.department == department)
     if doctor:
-        q = q.filter(Patient.doctor == doctor)
+        q = q.filter(M.doctor == doctor)
     if status:
-        q = q.filter(Patient.status == status)
+        q = q.filter(M.status == status)
     if deleted:
-        rows = q.order_by(Patient.deleted_at.desc(), Patient.id.desc()).all()
+        rows = q.order_by(M.deleted_at.desc(), M.id.desc()).all()
     else:
-        rows = q.order_by(Patient.admission_date.desc(), Patient.id.desc()).all()
+        rows = q.order_by(M.admission_date.desc(), M.id.desc()).all()
     return [p.to_dict() for p in rows]
 
 
@@ -258,19 +282,26 @@ def discharge_patient(patient_id: int, db: Session = Depends(get_db)):
 
 @app.delete("/api/patients/{patient_id}", status_code=204)
 def delete_patient(patient_id: int, db: Session = Depends(get_db)):
-    # Soft delete: the row stays in the database (same id) but moves to the Deleted list.
+    # Move the row to `deleted_patients` (same id), then remove it from `patients`.
     p = get_or_404(db, patient_id)
-    p.is_deleted = True
-    p.deleted_at = datetime.now(ZoneInfo("Asia/Kolkata")).replace(tzinfo=None)
+    db.add(DeletedPatient(
+        id=p.id, **{f: getattr(p, f) for f in FIELDS},
+        deleted_at=datetime.now(ZoneInfo("Asia/Kolkata")).replace(tzinfo=None),
+    ))
+    db.delete(p)
     db.commit()
     return Response(status_code=204)
 
 
 @app.patch("/api/patients/{patient_id}/restore")
 def restore_patient(patient_id: int, db: Session = Depends(get_db)):
-    p = get_or_404(db, patient_id, include_deleted=True)
-    p.is_deleted = False
-    p.deleted_at = None
+    # Move the row back from `deleted_patients` to `patients` with its original id.
+    d = db.get(DeletedPatient, patient_id)
+    if not d:
+        raise HTTPException(404, "Deleted patient not found")
+    p = Patient(id=d.id, **{f: getattr(d, f) for f in FIELDS})
+    db.add(p)
+    db.delete(d)
     db.commit()
     db.refresh(p)
     return p.to_dict()
