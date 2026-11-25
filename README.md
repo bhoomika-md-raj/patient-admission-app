@@ -63,7 +63,16 @@ npm run dev               # http://localhost:5173
 No secrets are committed; `.env` files are git-ignored.
 
 ## Screenshots
-_Add screenshots to a `screenshots/` folder and link them here:_
-![Desktop](screenshots/desktop.png)
-![Mobile](screenshots/mobile.png)
-![Add form validation](screenshots/validation.png)
+
+### Desktop
+![Desktop](screenshots/Desktop/desktop.png)
+![Desktop date](screenshots/Desktop/desktop-date.png)
+
+### Mobile
+| List | Edit | Validation |
+|---|---|---|
+| <img src="screenshots/Mobile/mobile.jpeg" width="250"> | <img src="screenshots/Mobile/mobile-edit.jpeg" width="250"> | <img src="screenshots/Add%20form%20validation/mobile-validation.jpeg" width="250"> |
+
+### Form validation and delete confirmation
+![Desktop validation](screenshots/Add%20form%20validation/desktop-validation.png)
+![Delete confirmation](screenshots/Add%20form%20validation/desktop-delete-confirmation.png)
