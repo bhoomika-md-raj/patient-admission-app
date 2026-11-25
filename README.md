@@ -6,6 +6,8 @@ Web app for hospital staff to manage admitted patients — add, list, filter, se
 
 **API:** https://patient-admission-app-g26v.onrender.com/api/patients (docs at `/docs`)
 
+Docs: https://patient-admission-app-g26v.onrender.com/docs
+
 Deleted:  https://patient-admission-app-g26v.onrender.com/api/patients?deleted=true
 
 **Source code:** https://github.com/bhoomika-md-raj/patient-admission-app/tree/main
