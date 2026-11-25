@@ -71,8 +71,8 @@ No secrets are committed; `.env` files are git-ignored.
 ### Mobile
 | List | Edit | Validation |
 |---|---|---|
-| <img src="screenshots/Mobile/mobile.jpeg" width="250"> | <img src="screenshots/Mobile/mobile-edit.jpeg" width="250"> | <img src="screenshots/Add%20form%20validation/mobile-validation.jpeg" width="250"> |
+| <img src="screenshots/Mobile/mobile.jpeg" width="250"> | <img src="screenshots/Mobile/mobile-edit.jpeg" width="250"> | <img src="screenshots/Form%20validation/mobile-validation.jpeg" width="250"> |
 
 ### Form validation and delete confirmation
-![Desktop validation](screenshots/Add%20form%20validation/desktop-validation.png)
-![Delete confirmation](screenshots/Add%20form%20validation/desktop-delete-confirmation.png)
+![Desktop validation](screenshots/Form%20validation/desktop-validation.png)
+![Delete confirmation](screenshots/Form%20validation/desktop-delete-confirmation.png)
