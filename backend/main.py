@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, field_validator
-from sqlalchemy import Column, Date, Integer, String, create_engine
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, create_engine, false
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 # ---------- Database ----------
@@ -33,12 +33,16 @@ class Patient(Base):
     doctor = Column(String(80), nullable=False, index=True)
     admission_date = Column(Date, nullable=False)
     status = Column(String(20), nullable=False, default="Admitted")
+    is_deleted = Column(Boolean, nullable=False, default=False, server_default=false(), index=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     def to_dict(self):
         return {
             "id": self.id, "name": self.name, "age": self.age, "gender": self.gender,
             "ward": self.ward, "department": self.department, "doctor": self.doctor,
             "admission_date": self.admission_date.isoformat(), "status": self.status,
+            "is_deleted": bool(self.is_deleted),
+            "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
         }
 
 
@@ -152,15 +156,8 @@ class PatientIn(BaseModel):
 # ---------- App ----------
 app = FastAPI(title="Patient Admission API")
 origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
-# app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.exception_handler(RequestValidationError)
 async def validation_handler(request: Request, exc: RequestValidationError):
@@ -184,9 +181,9 @@ async def http_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail, "errors": {}})
 
 
-def get_or_404(db: Session, patient_id: int) -> Patient:
+def get_or_404(db: Session, patient_id: int, include_deleted: bool = False) -> Patient:
     p = db.get(Patient, patient_id)
-    if not p:
+    if not p or (p.is_deleted and not include_deleted):
         raise HTTPException(404, "Patient not found")
     return p
 
@@ -205,9 +202,10 @@ def options():
 def list_patients(
     search: Optional[str] = None, ward: Optional[str] = None,
     department: Optional[str] = None, doctor: Optional[str] = None,
-    status: Optional[str] = None, db: Session = Depends(get_db),
+    status: Optional[str] = None, deleted: bool = False, db: Session = Depends(get_db),
 ):
-    q = db.query(Patient)
+    # deleted=false (default) -> active patients, deleted=true -> the "Deleted" list
+    q = db.query(Patient).filter(Patient.is_deleted == deleted)
     if search and search.strip():
         q = q.filter(Patient.name.ilike(f"%{search.strip()}%"))
     if ward:
@@ -218,7 +216,10 @@ def list_patients(
         q = q.filter(Patient.doctor == doctor)
     if status:
         q = q.filter(Patient.status == status)
-    rows = q.order_by(Patient.admission_date.desc(), Patient.id.desc()).all()
+    if deleted:
+        rows = q.order_by(Patient.deleted_at.desc(), Patient.id.desc()).all()
+    else:
+        rows = q.order_by(Patient.admission_date.desc(), Patient.id.desc()).all()
     return [p.to_dict() for p in rows]
 
 
@@ -257,7 +258,19 @@ def discharge_patient(patient_id: int, db: Session = Depends(get_db)):
 
 @app.delete("/api/patients/{patient_id}", status_code=204)
 def delete_patient(patient_id: int, db: Session = Depends(get_db)):
+    # Soft delete: the row stays in the database (same id) but moves to the Deleted list.
     p = get_or_404(db, patient_id)
-    db.delete(p)
+    p.is_deleted = True
+    p.deleted_at = datetime.now(ZoneInfo("Asia/Kolkata")).replace(tzinfo=None)
     db.commit()
     return Response(status_code=204)
+
+
+@app.patch("/api/patients/{patient_id}/restore")
+def restore_patient(patient_id: int, db: Session = Depends(get_db)):
+    p = get_or_404(db, patient_id, include_deleted=True)
+    p.is_deleted = False
+    p.deleted_at = None
+    db.commit()
+    db.refresh(p)
+    return p.to_dict()
