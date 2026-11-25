@@ -2,8 +2,8 @@
 
 Web app for hospital staff to manage admitted patients — add, list, filter, search, edit, delete (with confirmation) and discharge.
 
-**Live app:** <ADD_FRONTEND_URL>
-**API:** <ADD_BACKEND_URL> (docs at `/docs`)
+**Live app:** https://patient-admission-app-nu.vercel.app/
+**API:** https://patient-admission-app-g26v.onrender.com (docs at `/docs`)
 
 ## Tech stack
 | Layer | Tech |
