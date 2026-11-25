@@ -2,5 +2,6 @@ fastapi
 uvicorn[standard]
 SQLAlchemy
 pydantic
+psycopg[binary]
 psycopg2-binary
 tzdata
