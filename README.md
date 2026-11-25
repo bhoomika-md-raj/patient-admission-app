@@ -4,7 +4,7 @@ Web app for hospital staff to manage admitted patients — add, list, filter, se
 
 **Live app:** https://patient-admission-app-nu.vercel.app/
 
-**API:** https://patient-admission-app-g26v.onrender.com/api/patients (docs at `/docs`)
+**API:** https://patient-admission-app-g26v.onrender.com/api/patients
 
 Docs: https://patient-admission-app-g26v.onrender.com/docs
 
