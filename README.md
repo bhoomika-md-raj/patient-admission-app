@@ -3,7 +3,7 @@
 Web app for hospital staff to manage admitted patients — add, list, filter, search, edit, delete (with confirmation) and discharge.
 
 **Live app:** https://patient-admission-app-nu.vercel.app/
-**API:** https://patient-admission-app-g26v.onrender.com/docs/ (docs at `/docs`)
+**API:** https://patient-admission-app-g26v.onrender.com/ (docs at `/docs`)
 
 ## Tech stack
 | Layer | Tech |
@@ -14,6 +14,8 @@ Web app for hospital staff to manage admitted patients — add, list, filter, se
 
 ## Features
 Add · List · Filter by Ward / Department / Doctor (+ Status) · Search by name · Edit · Delete with confirmation · Mark Discharged · Responsive (mobile / tablet / desktop)
+
+Design decision: deleting a patient is a soft delete. The record moves to a "Deleted" tab and can be restored, and patient IDs are never reused, as in real hospital systems where records must be retained for audit.
 
 ## Validation (frontend **and** backend)
 - Name: required, letters (and spaces) only
