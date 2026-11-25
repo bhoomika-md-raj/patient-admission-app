@@ -7,7 +7,7 @@ Web app for hospital staff to manage admitted patients — add, list, filter, se
 
 <small> Deleted:  https://patient-admission-app-g26v.onrender.com/api/patients?deleted=true </small>
 
-#**Source code:** https://github.com/bhoomika-md-raj/patient-admission-app/tree/main
+**Source code:** https://github.com/bhoomika-md-raj/patient-admission-app/tree/main
 
 ## Tech stack
 | Layer | Tech |
